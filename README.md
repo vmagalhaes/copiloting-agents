@@ -165,17 +165,42 @@ Click **Enable notifications** in the header to receive desktop notifications wh
 
 > **macOS:** If notifications don't appear, check **System Settings → Notifications → [your browser]** and ensure it's set to Alerts or Banners.
 
-## Production Build
+## Running without cloning (npx)
+
+If the package is published to npm, anyone can run it with no installation step:
 
 ```bash
-# Build both server and client
-npm run build
-
-# Start the compiled server
-npm run start --workspace=server
+npx copiloting-agents
 ```
 
-Serve the built client (`client/dist/`) with any static file server or point your web server at it.
+This downloads the pre-built package and starts the server at **http://localhost:3001**.
+
+To use a different port:
+
+```bash
+PORT=8080 npx copiloting-agents
+```
+
+## Production mode (from source)
+
+Run a single command after `npm install` — no `npm run dev`, no separate client server:
+
+```bash
+npm install   # one-time setup
+npm start     # build + serve on http://localhost:3001
+```
+
+`npm start` compiles the TypeScript server, builds the Vite client, then launches Express which serves the built client as static files alongside the API. Everything runs on a single port.
+
+### Manual build steps
+
+If you want to build and start separately (e.g. in a container):
+
+```bash
+npm run build              # compiles server (tsc) + client (vite build)
+node server/dist/index.js  # starts the server; client/dist/ is served automatically
+```
+
 
 ## Project Structure
 
