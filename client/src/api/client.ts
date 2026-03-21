@@ -95,3 +95,22 @@ export async function checkHealth(): Promise<boolean> {
     return false;
   }
 }
+
+export async function fetchConfig(): Promise<{ sessionDir: string; exists: boolean }> {
+  const res = await fetch('/api/config');
+  if (!res.ok) throw new Error('Failed to fetch config');
+  return res.json();
+}
+
+export async function setSessionDir(dir: string): Promise<{ ok: boolean; sessionDir: string }> {
+  const res = await fetch('/api/config/session-dir', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dir }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(data.error ?? 'Failed to set session directory');
+  }
+  return res.json();
+}

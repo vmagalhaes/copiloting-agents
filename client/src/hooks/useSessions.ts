@@ -26,5 +26,5 @@ export function useSessions() {
     return () => clearInterval(interval);
   }, [load]);
 
-  return { sessions, loading, error };
+  return { sessions, loading, error, refetch: load };
 }

@@ -18,7 +18,13 @@ import type {
 } from './sessionTypes.js';
 import { needsAttention, lastSessionStatus, hasPendingWork, hasPendingPlanApproval, getCurrentMode } from './utils/needsAttention.js';
 
-const SESSIONS_BASE = path.join(os.homedir(), '.copilot', 'session-state');
+export let SESSIONS_BASE =
+  process.env.SESSION_DIR ??
+  path.join(os.homedir(), '.copilot', 'session-state');
+
+export function setSessionsBase(dir: string) {
+  SESSIONS_BASE = dir;
+}
 
 function parseEventsFile(filePath: string): RawEvent[] {
   try {
