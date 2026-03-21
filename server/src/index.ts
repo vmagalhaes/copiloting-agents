@@ -1,9 +1,20 @@
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 import router from './router.js';
+import { loadConfig } from './config.js';
+import { SESSIONS_BASE, setSessionsBase } from './sessionReader.js';
+
+// Apply persisted config before anything else (env var takes priority)
+if (!process.env.SESSION_DIR) {
+  const saved = loadConfig();
+  if (saved.sessionDir) {
+    setSessionsBase(saved.sessionDir);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -28,6 +39,7 @@ app.listen(PORT, () => {
   const cyan  = '\x1b[36m';
   const white = '\x1b[97m';
   const gray  = '\x1b[90m';
+  const yellow = '\x1b[33m';
 
   // Width is the number of visible characters between the box borders
   const W = 46;
@@ -57,6 +69,16 @@ app.listen(PORT, () => {
   const taglineStyled  = `${' '.repeat(taglinePad)}${gray}${tagline}${reset}`;
   const taglineVisible = ' '.repeat(taglinePad) + tagline;
 
+  const sessionsDir = SESSIONS_BASE;
+  const dirExists = fs.existsSync(sessionsDir);
+  // Truncate long paths for display
+  const maxDirLen = W - 2 - 10; // "Sessions: " = 10 chars
+  const displayDir = sessionsDir.length > maxDirLen
+    ? '…' + sessionsDir.slice(-(maxDirLen - 1))
+    : sessionsDir;
+  const dirVisible = `Sessions: ${displayDir}`;
+  const dirStyled  = `${gray}Sessions:${reset} ${cyan}${displayDir}${reset}`;
+
   console.log('');
   console.log(border('┌', '┐'));
   console.log(blank);
@@ -66,6 +88,14 @@ app.listen(PORT, () => {
   console.log(border('├', '┤'));
   console.log(blank);
   console.log(row(urlVisible, urlStyled));
+  console.log(row(dirVisible, dirStyled));
+  if (!dirExists) {
+    const warn        = '⚠  Directory not found';
+    const warnPad     = Math.floor((W - warn.length) / 2);
+    const warnVisible = ' '.repeat(warnPad) + warn;
+    const warnStyled  = `${' '.repeat(warnPad)}${yellow}${warn}${reset}`;
+    console.log(row(warnVisible, warnStyled));
+  }
   console.log(blank);
   console.log(border('└', '┘'));
   console.log('');

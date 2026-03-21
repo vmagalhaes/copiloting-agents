@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSessions } from '../../hooks/useSessions.ts';
 import { LoadingSpinner } from '../shared/LoadingSpinner.tsx';
 import { SessionRow } from './SessionRow.tsx';
 import { SessionCard } from './SessionCard.tsx';
+import { fetchConfig, setSessionDir } from '../../api/client.ts';
 
 function ListIcon({ active }: { active: boolean }) {
   return (
@@ -21,14 +22,40 @@ function GridIcon({ active }: { active: boolean }) {
 }
 
 export function SessionList() {
-  const { sessions, loading, error } = useSessions();
+  const { sessions, loading, error, refetch } = useSessions();
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(
     () => (localStorage.getItem('sessionViewMode') as 'list' | 'grid') ?? 'list'
   );
+  const [dirExists, setDirExists] = useState<boolean>(true);
+  const [dirInput, setDirInput] = useState<string>('');
+  const [applyError, setApplyError] = useState<string>('');
+  const [applying, setApplying] = useState(false);
+
+  useEffect(() => {
+    fetchConfig().then((cfg) => {
+      setDirExists(cfg.exists);
+      setDirInput(cfg.sessionDir);
+    }).catch(() => {});
+  }, []);
 
   function toggleView(mode: 'list' | 'grid') {
     setViewMode(mode);
     localStorage.setItem('sessionViewMode', mode);
+  }
+
+  async function handleApply() {
+    setApplyError('');
+    setApplying(true);
+    try {
+      const result = await setSessionDir(dirInput);
+      setDirInput(result.sessionDir);
+      setDirExists(true);
+      refetch();
+    } catch (e) {
+      setApplyError(e instanceof Error ? e.message : 'Failed to apply');
+    } finally {
+      setApplying(false);
+    }
   }
 
   const activeSessions = sessions.filter((s) => s.isOpen);
@@ -85,11 +112,37 @@ export function SessionList() {
       )}
 
       {!loading && activeSessions.length === 0 && !error && (
-        <div className="rounded-lg border border-gh-border bg-gh-surface p-8 text-center">
-          <p className="text-gh-muted text-sm">
-            No sessions found in <code className="font-mono text-xs bg-gh-bg px-1 rounded">~/.copilot/session-state/</code>
-          </p>
-          <p className="text-gh-muted text-xs mt-2">
+        <div className="rounded-lg border border-gh-border bg-gh-surface p-8">
+          <p className="text-gh-text text-sm font-medium mb-4">No sessions found</p>
+
+          <div className="mb-4">
+            <label className="block text-gh-muted text-xs mb-1">Looking in:</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={dirInput}
+                onChange={(e) => { setDirInput(e.target.value); setApplyError(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }}
+                className="flex-1 font-mono text-xs bg-gh-bg border border-gh-border rounded px-2 py-1.5 text-gh-text focus:outline-none focus:border-gh-active"
+                placeholder="Path to session directory"
+              />
+              <button
+                onClick={handleApply}
+                disabled={applying}
+                className="px-3 py-1.5 text-xs bg-gh-active text-white rounded hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {applying ? 'Applying…' : 'Apply'}
+              </button>
+            </div>
+            {applyError && (
+              <p className="text-gh-attention text-xs mt-1">{applyError}</p>
+            )}
+            {!dirExists && !applyError && (
+              <p className="text-gh-attention text-xs mt-1">Directory not found</p>
+            )}
+          </div>
+
+          <p className="text-gh-muted text-xs">
             Start a Copilot CLI session and it will appear here automatically.
           </p>
         </div>
